@@ -10,4 +10,4 @@ Training time ~ 12h
 
 Third version unoptimized: 
 Loss ~ 2.31
-Training time ~ 2h
+Training time ~ 3h
