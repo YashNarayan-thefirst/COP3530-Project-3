@@ -1,5 +1,8 @@
 import numpy as np
-
+"""
+Custom LSTM class is made for demonstration purposes only. The keras implementation of LSTM significantly outperforms anything I could make. 
+The results are reflected in the loss and training time.
+"""
 class LSTM:
     def __init__(self, input_size, hidden_size, num_layers=2, 
                  batch_size=32, checkpoint_interval=5):
