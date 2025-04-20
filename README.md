@@ -11,3 +11,7 @@ Training time ~ 12h
 Third version unoptimized: 
 Loss ~ 2.31
 Training time ~ 3h
+
+Fourth version unoptimized
+Loss ~ 1.39
+Training time ~ 26m
