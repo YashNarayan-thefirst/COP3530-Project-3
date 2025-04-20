@@ -15,5 +15,4 @@ Training time ~ 3h
 Fourth version unoptimized
 Loss ~ 1.39
 Training time ~ 26m
-![image](https://github.com/user-attachments/assets/00ceacf0-c3f1-4996-ad79-4557de6639b3)
-
+![image](https://github.com/user-attachments/assets/f2f7cdb1-ba83-40c4-984b-38a54cb129c4)
