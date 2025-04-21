@@ -32,4 +32,3 @@ Loss ~ 0.98 (Sub 1 lets go)
 Training time ~ 20 m
 ![image](https://github.com/user-attachments/assets/b90b7856-31d4-4947-b92a-c8f448ac2789)
 
-Trai
