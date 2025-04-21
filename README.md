@@ -22,7 +22,14 @@ Loss ~ 10^5
 Training time ~ 4.58h
 ![image](https://github.com/user-attachments/assets/87c1c524-f950-48d3-bf3a-ee668e0b1121)
 
-First version (Native keras LSTM) optimized
+First version (keras LSTM) optimized
 Loss ~ 1.38
 Training time ~ 3m 56s
 ![image](https://github.com/user-attachments/assets/002d7099-a69b-4bab-abc4-2cc6e6c44559)
+
+Second version (keras LSTM) optimized
+Loss ~ 0.98 (Sub 1 lets go)
+Training time ~ 20 m
+![image](https://github.com/user-attachments/assets/b90b7856-31d4-4947-b92a-c8f448ac2789)
+
+Trai
