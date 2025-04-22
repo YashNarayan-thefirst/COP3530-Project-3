@@ -4,7 +4,7 @@ This is the code of final project for COP3530. A Marketstack API key is required
 This project uses tensorflow's linear regression to predict stock prices, then displays the predicted close price (using CustomTkinter) along with a graph (Marketstack API) of the actual closing price for user convenience.
 This project also contains an unused custom LSTM implementation, which is made for educational purposes only.
 
-Download link: ![hyperlink](https://www.mediafire.com/file/snq7ifjy7b6e204/Stock_Predictor_App.zip/file)
+Download link: ![https://www.mediafire.com/file/snq7ifjy7b6e204/Stock_Predictor_App.zip/file](https://www.mediafire.com/file/snq7ifjy7b6e204/Stock_Predictor_App.zip/file)
 
 Example usage:
 ![image](https://github.com/user-attachments/assets/75c3ce33-a961-4a2e-9577-e19093e313ac)
