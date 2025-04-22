@@ -11,7 +11,7 @@ This project also contains an unused custom LSTM implementation, which is made f
 
 Download link: [https://www.mediafire.com/file/snq7ifjy7b6e204/Stock_Predictor_App.zip/file]
 
-Example usage:
+# Example usage:
 ![image](https://github.com/user-attachments/assets/75c3ce33-a961-4a2e-9577-e19093e313ac)
 
 ![image](https://github.com/user-attachments/assets/f4461acc-a90a-421d-9318-6c6898f70746)
