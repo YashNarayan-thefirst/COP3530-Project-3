@@ -1,5 +1,4 @@
 import numpy as np
-
 class LSTM:
     def __init__(self, input_size, hidden_size, num_layers=2,
              batch_size=32, checkpoint_interval=5, dropout=0.0):
@@ -73,7 +72,10 @@ class LSTM:
                 combined = np.concatenate([x_batch[:,t,:], h], axis=1)
                 gates = np.dot(combined, layer['W']) + layer['b']
                 i, f, g, o = np.split(gates, 4, axis=1)
-                
+                o = np.clip(o, -100, 100) 
+                f = np.clip(f, -100, 100)
+                i = np.clip(i, -100, 100)
+                g = np.clip(g, -100, 100)
                 i = 1 / (1 + np.exp(-i))
                 f = 1 / (1 + np.exp(-f))
                 o = 1 / (1 + np.exp(-o))
@@ -88,7 +90,7 @@ class LSTM:
             hiddens.append(h)
         
         return np.dot(hiddens[-1], self.W_out) + self.b_out
-    
+
     def backward(self, dout):
         grads = {
             'W_out': np.zeros_like(self.W_out),
@@ -127,7 +129,10 @@ class LSTM:
                     combined = np.concatenate([x_segment[:,t,:], h], axis=1)
                     gates = np.dot(combined, layer['W']) + layer['b']
                     i, f, o, g = np.split(gates, 4, axis=1)
-                    
+                    i = np.clip(i, -100, 100)
+                    f = np.clip(f, -100, 100)
+                    o = np.clip(o, -100, 100)
+                    g = np.clip(g, -100, 100)
                     i = 1 / (1 + np.exp(-i))
                     f = 1 / (1 + np.exp(-f))
                     o = 1 / (1 + np.exp(-o))
@@ -232,11 +237,29 @@ class LSTM:
                 self.b_out -= lr * m_hat / (np.sqrt(v_hat) + self.epsilon)
 
     def save(self, filename):
-        np.savez(filename,
-                weights=[layer['Wx'] for layer in self.layers],
-                biases=[layer['b'] for layer in self.layers],
-                output_weight=self.output_weight,
-                output_bias=self.output_bias)
+        save_dict = {
+        'W_out': self.W_out,
+        'b_out': self.b_out,
+        'num_layers': self.num_layers,
+        'input_size': self.input_size,
+        'hidden_size': self.hidden_size
+        }
+        for i, layer in enumerate(self.layers):
+            save_dict[f'W_layer{i}'] = layer['W']
+            save_dict[f'b_layer{i}'] = layer['b']
+        save_dict['t'] = self.t
+        for i in range(self.num_layers):
+            save_dict[f'm_W_layer{i}'] = self.m[i]['W']
+            save_dict[f'm_b_layer{i}'] = self.m[i]['b']
+            save_dict[f'v_W_layer{i}'] = self.v[i]['W']
+            save_dict[f'v_b_layer{i}'] = self.v[i]['b']
+        
+        save_dict['m_W_out'] = self.m_out['W']
+        save_dict['m_b_out'] = self.m_out['b']
+        save_dict['v_W_out'] = self.v_out['W']
+        save_dict['v_b_out'] = self.v_out['b']
+        
+        np.savez(filename, **save_dict)
 
     def load(self, filepath):
         data = np.load(filepath)
@@ -254,7 +277,7 @@ class LSTM:
                 x_batch = X_train[i:i+batch_size]
                 y_batch = y_train[i:i+batch_size]
                 loss = self.train_step(x_batch, y_batch, lr)
-                epoch_loss += loss * x_batch.shape[0]  # for weighted averaging
+                epoch_loss += loss * x_batch.shape[0]  
             epoch_loss /= n_samples
             if verbose:
                 print(f"Epoch {epoch+1}/{epochs}, Loss: {epoch_loss:.6f}")
@@ -266,5 +289,5 @@ class LSTM:
         return self.eval_step(X, y)
 
     def eval_step(self, x_batch, y_batch):
-        y_pred = self._forward_pass(x_batch)
+        y_pred = self.forward(x_batch)
         return np.mean((y_pred - y_batch)**2)
