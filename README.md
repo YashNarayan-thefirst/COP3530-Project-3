@@ -56,4 +56,7 @@ Loss ~ 0.98
 Training time ~ 20 m
 ![image](https://github.com/user-attachments/assets/b90b7856-31d4-4947-b92a-c8f448ac2789)
 
+Third version (keras LSTM) optimized
+Loss ~ 0.87
+Training time ~ 15m
 
