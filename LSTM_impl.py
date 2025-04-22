@@ -1,32 +1,58 @@
 import numpy as np
-"""
-Custom LSTM class is made for demonstration purposes only. The keras implementation of LSTM significantly outperforms anything I could make. 
-The results are reflected in the loss and training time.
-"""
+
 class LSTM:
-    def __init__(self, input_size, hidden_size, num_layers=2, 
-                 batch_size=32, checkpoint_interval=5):
+    def __init__(self, input_size, hidden_size, num_layers=2,
+             batch_size=32, checkpoint_interval=5, dropout=0.0):
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.batch_size = batch_size
         self.checkpoint_interval = checkpoint_interval
         self.max_grad_norm = 5.0
+        self.dropout = dropout
 
-        # Initialize layers
+        self.epsilon = 1e-7 
+        self.beta1 = 0.9
+        self.beta2 = 0.999
+        self.t = 0
+
         self.layers = []
+        self.m = []
+        self.v = []
+
         for i in range(num_layers):
             input_dim = input_size if i == 0 else hidden_size
-            layer = {
-                'W': np.random.randn(input_dim + hidden_size, 4 * hidden_size) * 0.01,
-                'b': np.zeros((1, 4 * hidden_size)),
-                'checkpoints': []
-            }
-            self.layers.append(layer)
-        
-        # Output layer
-        self.W_out = np.random.randn(hidden_size, 1) * 0.01
+
+            # Glorot uniform for input part
+            glorot_limit = np.sqrt(6.0 / (input_dim + hidden_size))
+            W_input = np.random.uniform(-glorot_limit, glorot_limit, (input_dim, 4 * hidden_size))
+
+            # Orthogonal for recurrent part
+            def orthogonal(shape):
+                a = np.random.randn(*shape)
+                u, _, v = np.linalg.svd(a, full_matrices=False)
+                return u if u.shape == shape else v
+
+            W_recurrent = orthogonal((hidden_size, 4 * hidden_size))
+
+            # Concatenate input and recurrent weights
+            W = np.concatenate([W_input, W_recurrent], axis=0)
+
+            # Bias: zeros except forget gate = 1
+            b = np.zeros((1, 4 * hidden_size))
+            b[0, hidden_size:2*hidden_size] = 1.0
+
+            self.layers.append({'W': W, 'b': b, 'checkpoints': []})
+            self.m.append({'W': np.zeros_like(W), 'b': np.zeros_like(b)})
+            self.v.append({'W': np.zeros_like(W), 'b': np.zeros_like(b)})
+
+        # Output layer: Glorot uniform
+        limit_out = np.sqrt(6 / (hidden_size + 1))
+        self.W_out = np.random.uniform(-limit_out, limit_out, (hidden_size, 1))
         self.b_out = np.zeros((1, 1))
+
+        self.m_out = {'W': np.zeros_like(self.W_out), 'b': np.zeros_like(self.b_out)}
+        self.v_out = {'W': np.zeros_like(self.W_out), 'b': np.zeros_like(self.b_out)}
 
     def forward(self, x_batch):
         batch_size, seq_len, _ = x_batch.shape
@@ -95,7 +121,7 @@ class LSTM:
                 h = h_start.copy()
                 c = c_start.copy()
                 cache = []
-
+                
                 # Forward pass to rebuild cache
                 for t in range(start_t, end_t):
                     combined = np.concatenate([x_segment[:,t,:], h], axis=1)
@@ -157,45 +183,60 @@ class LSTM:
     def train_step(self, x_batch, y_batch, lr=0.001):
         y_pred = self.forward(x_batch)
         loss = float(np.mean((y_pred - y_batch)**2))
-        dout = 2 * (y_pred - y_batch) / self.batch_size
+        dout = 2 * (y_pred - y_batch) / y_batch.shape[0]
         
         grads = self.backward(dout)
-        self._apply_gradients(grads, lr)
+        self._apply_adam(grads, lr)
         return loss
+
+    def _layer_norm(self, x, eps=1e-5):
+        mean = np.mean(x, axis=-1, keepdims=True)
+        var = np.var(x, axis=-1, keepdims=True)
+        return (x - mean) / np.sqrt(var + eps)
+
+    def _apply_dropout(self, x):
+        if self.dropout > 0.0:
+            mask = (np.random.rand(*x.shape) >= self.dropout).astype(np.float32)
+            return (x * mask) / (1.0 - self.dropout)
+        return x
+
+    def _apply_mask(self, x, mask):
+        return x * mask[:, :, np.newaxis]
 
     def eval_step(self, x_batch, y_batch):
         y_pred = self.forward(x_batch)
         return float(np.mean((y_pred - y_batch)**2))
 
-    def _apply_gradients(self, grads, lr):
-        # Gradient clipping
-        total_norm = 0
-        for layer_grad in grads['layers']:
-            total_norm += np.sum(layer_grad['W']**2) + np.sum(layer_grad['b']**2)
-        total_norm += np.sum(grads['W_out']**2) + np.sum(grads['b_out']**2)
-        total_norm = np.sqrt(total_norm)
-        
-        if total_norm > self.max_grad_norm:
-            scale = self.max_grad_norm / total_norm
-            for layer_grad in grads['layers']:
-                layer_grad['W'] *= scale
-                layer_grad['b'] *= scale
-            grads['W_out'] *= scale
-            grads['b_out'] *= scale
-        
-        # Update weights
-        self.W_out -= lr * grads['W_out']
-        self.b_out -= lr * grads['b_out']
+    def _apply_adam(self, grads, lr):
+        self.t += 1
         for l_idx, layer in enumerate(self.layers):
-            layer['W'] -= lr * grads['layers'][l_idx]['W']
-            layer['b'] -= lr * grads['layers'][l_idx]['b']
+            for param in ['W', 'b']:
+                self.m[l_idx][param] = self.beta1 * self.m[l_idx][param] + (1 - self.beta1) * grads['layers'][l_idx][param]
+                self.v[l_idx][param] = self.beta2 * self.v[l_idx][param] + (1 - self.beta2) * (grads['layers'][l_idx][param] ** 2)
 
-    def save(self, filepath):
-        layer_params = {}
-        for i, layer in enumerate(self.layers):
-            layer_params[f'W_layer{i}'] = layer['W']
-            layer_params[f'b_layer{i}'] = layer['b']
-        np.savez(filepath, **layer_params, W_out=self.W_out, b_out=self.b_out)
+                m_hat = self.m[l_idx][param] / (1 - self.beta1 ** self.t)
+                v_hat = self.v[l_idx][param] / (1 - self.beta2 ** self.t)
+
+                layer[param] -= lr * m_hat / (np.sqrt(v_hat) + self.epsilon)
+
+        for param in ['W', 'b']:
+            self.m_out[param] = self.beta1 * self.m_out[param] + (1 - self.beta1) * grads[f'{param}_out']
+            self.v_out[param] = self.beta2 * self.v_out[param] + (1 - self.beta2) * (grads[f'{param}_out'] ** 2)
+
+            m_hat = self.m_out[param] / (1 - self.beta1 ** self.t)
+            v_hat = self.v_out[param] / (1 - self.beta2 ** self.t)
+
+            if param == 'W':
+                self.W_out -= lr * m_hat / (np.sqrt(v_hat) + self.epsilon)
+            else:
+                self.b_out -= lr * m_hat / (np.sqrt(v_hat) + self.epsilon)
+
+    def save(self, filename):
+        np.savez(filename,
+                weights=[layer['Wx'] for layer in self.layers],
+                biases=[layer['b'] for layer in self.layers],
+                output_weight=self.output_weight,
+                output_bias=self.output_bias)
 
     def load(self, filepath):
         data = np.load(filepath)
@@ -205,3 +246,25 @@ class LSTM:
             self.layers[i]['W'] = data[f'W_layer{i}']
             self.layers[i]['b'] = data[f'b_layer{i}']
 
+    def fit(self, X_train, y_train, epochs=10, batch_size=32, lr=0.001, verbose=True):
+        n_samples = X_train.shape[0]
+        for epoch in range(epochs):
+            epoch_loss = 0
+            for i in range(0, n_samples, batch_size):
+                x_batch = X_train[i:i+batch_size]
+                y_batch = y_train[i:i+batch_size]
+                loss = self.train_step(x_batch, y_batch, lr)
+                epoch_loss += loss * x_batch.shape[0]  # for weighted averaging
+            epoch_loss /= n_samples
+            if verbose:
+                print(f"Epoch {epoch+1}/{epochs}, Loss: {epoch_loss:.6f}")
+
+    def predict(self, X):
+        return self.forward(X)
+
+    def evaluate(self, X, y):
+        return self.eval_step(X, y)
+
+    def eval_step(self, x_batch, y_batch):
+        y_pred = self._forward_pass(x_batch)
+        return np.mean((y_pred - y_batch)**2)

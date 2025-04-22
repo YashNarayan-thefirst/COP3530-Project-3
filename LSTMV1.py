@@ -5,8 +5,8 @@ from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.model_selection import train_test_split
 from LSTM_impl import LSTM  
 import matplotlib.pyplot as plt
-import asyncio
 import seaborn as sns
+
 
 column_names = ['Date', 'Open', 'High', 'Low', 'Close', 'Volume',
                 'Dividends', 'Stock Splits', 'Brand_Name', 'Ticker',
@@ -59,40 +59,34 @@ def evaluate_model(model, X_test, y_test):
         test_loss += loss
     return test_loss / (len(X_test) / model.batch_size)
 
-def train_model():
-    epochs = 100
+def train_model(model, X_train, y_train, X_test, y_test, epochs=1, initial_lr=0.001, lr_decay=0.95):
     best_loss = float('inf')
-    initial_lr = 0.001
-    lr_decay = 0.95
-
     train_losses = []
     val_losses = []
 
     for epoch in range(epochs):
         perm = np.random.permutation(len(X_train))
-        epoch_loss = 0.0  # Initialize as float
+        epoch_loss = 0.0
         lr = initial_lr * (lr_decay ** epoch)
 
-        for i in range(0, len(X_train), custom_lstm.batch_size):
-            idx = perm[i:i+custom_lstm.batch_size]
+        for i in range(0, len(X_train), model.batch_size):
+            idx = perm[i:i+model.batch_size]
             x_batch = X_train[idx]
             y_batch = y_train[idx].reshape(-1, 1)
-            
-            # Direct float accumulation
-            loss = custom_lstm.train_step(x_batch, y_batch, lr=lr)
-            epoch_loss += loss  
-        val_loss = evaluate_model(custom_lstm, X_test, y_test)
-        
-        train_loss = epoch_loss / (len(X_train) / custom_lstm.batch_size)
+            loss = model.train_step(x_batch, y_batch, lr=lr)
+            epoch_loss += loss
+
+        val_loss = evaluate_model(model, X_test, y_test)
+        train_loss = epoch_loss / (len(X_train) / model.batch_size)
         train_losses.append(train_loss)
         val_losses.append(val_loss)
 
         if val_loss < best_loss:
             best_loss = val_loss
-            custom_lstm.save("best_model.keras")
+            model.save("best_model.keras")
 
         print(f"Epoch {epoch+1}/{epochs}, Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, LR: {lr:.6f}")
-    # Plot training history
+
     plt.figure(figsize=(12, 6))
     plt.plot(train_losses, label='Training Loss')
     plt.plot(val_losses, label='Validation Loss')
@@ -103,23 +97,23 @@ def train_model():
     plt.savefig('training_history.png')
     plt.show()
 
-if __name__ == "__main__":
+def main():
     input_size = X_train.shape[2]
     hidden_size = 128
     num_layers = 2
     batch_size = 64
 
-    custom_lstm = LSTM(
+    model = LSTM(
         input_size=input_size,
         hidden_size=hidden_size,
         num_layers=num_layers,
         batch_size=batch_size
     )
 
-    def main():
-        train_model()
-        final_loss = evaluate_model(custom_lstm, X_test, y_test)
-        print(f"Final Test Loss: {final_loss:.4f}")
-        custom_lstm.save("final_model.keras")
+    train_model(model, X_train, y_train, X_test, y_test, epochs=10)
+    final_loss = evaluate_model(model, X_test, y_test)
+    print(f"Final Test Loss: {final_loss:.4f}")
+    model.save("final_model.keras")
 
+if __name__ == "__main__":
     main()
