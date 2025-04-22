@@ -52,5 +52,3 @@ Training time ~ 20 m
 ![image](https://github.com/user-attachments/assets/b90b7856-31d4-4947-b92a-c8f448ac2789)
 
 
-Demonstration (Input is a ticker): ![image](https://github.com/user-attachments/assets/d0b9c175-fc96-4bf7-8824-2182859dff71)
-
