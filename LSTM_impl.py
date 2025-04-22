@@ -66,7 +66,7 @@ class LSTM:
     def backward(self, dout):
         grads = {
             'W_out': np.zeros_like(self.W_out),
-            'b_out': np.zeros_lixke(self.b_out),
+            'b_out': np.zeros_like(self.b_out),
             'layers': [{'W': np.zeros_like(layer['W']), 'b': np.zeros_like(layer['b'])} 
                     for layer in self.layers]
         }
@@ -95,7 +95,7 @@ class LSTM:
                 h = h_start.copy()
                 c = c_start.copy()
                 cache = []
-                
+
                 # Forward pass to rebuild cache
                 for t in range(start_t, end_t):
                     combined = np.concatenate([x_segment[:,t,:], h], axis=1)
