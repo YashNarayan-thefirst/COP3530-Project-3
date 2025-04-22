@@ -5,7 +5,6 @@ from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.model_selection import train_test_split
 from LSTM_impl import LSTM  
 import matplotlib.pyplot as plt
-import seaborn as sns
 
 
 column_names = ['Date', 'Open', 'High', 'Low', 'Close', 'Volume',
@@ -109,8 +108,8 @@ def main():
         num_layers=num_layers,
         batch_size=batch_size
     )
-
     train_model(model, X_train, y_train, X_test, y_test, epochs=10)
+    
     final_loss = evaluate_model(model, X_test, y_test)
     print(f"Final Test Loss: {final_loss:.4f}")
     model.save("final_model.keras")
